@@ -354,7 +354,7 @@ input[type="text"],input[type="date"],input[type="search"],select,textarea{
 }
 textarea{height:auto;min-height:132px;padding:10px 12px;resize:vertical;line-height:1.5}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc-ink);box-shadow:0 0 0 3px var(--accent-20)}
-input[aria-invalid="true"]{border-color:var(--acc-ink)}
+input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--acc-ink)}
 input::placeholder{color:var(--fg-3)}
 input[type="date"]{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .err{font-size:11.5px;color:var(--acc-ink)}
@@ -1518,6 +1518,39 @@ tr[data-row].shown{opacity:1;transform:none;transition:opacity 460ms var(--ease)
   .va-foot .right .btn{flex:1 1 auto;justify-content:center}
 }
 
+/* ---- Volume Split Needed dialog ---------------------------------------- */
+.vs-callout{
+  display:flex;gap:10px;align-items:flex-start;padding:12px 14px;
+  border:1px solid var(--line-2);border-left:3px solid var(--warn);border-radius:var(--r-md);
+  background:color-mix(in srgb, var(--warn) 9%, var(--surface-2));
+  font-size:13.5px;font-weight:600;color:var(--fg);line-height:1.45
+}
+.vs-callout .i{color:var(--warn);display:inline-flex;flex:0 0 auto;margin-top:2px}
+.vs-table th,.vs-table td{white-space:nowrap}
+.vs-table tbody tr.tot td{background:var(--surface-2);font-weight:700;color:var(--fg)}
+.vs-table .dash{color:var(--fg-3)}
+.vs-tot.t-ok{color:var(--ok)}
+.vs-tot.t-warn{color:var(--warn)}
+.vs-tot.t-bad{color:var(--bad)}
+.stepper{display:inline-flex;align-items:stretch}
+.stepper .cell-in{width:72px;border-top-right-radius:0;border-bottom-right-radius:0;position:relative;z-index:1}
+.stepper .cell-in::-webkit-outer-spin-button,
+.stepper .cell-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stepper .cell-in{-moz-appearance:textfield}
+.st-btns{
+  display:flex;flex-direction:column;width:24px;border:1px solid var(--line-2);border-left:0;
+  border-radius:0 var(--r-sm) var(--r-sm) 0;overflow:hidden;background:var(--surface-2)
+}
+.st{
+  flex:1 1 50%;display:grid;place-items:center;border:0;padding:0;cursor:pointer;
+  background:none;color:var(--fg-3);min-height:14px
+}
+.st:hover{background:var(--surface-3);color:var(--fg)}
+.st:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.st.up{border-bottom:1px solid var(--line-2)}
+.st.up .ic{transform:rotate(180deg);display:inline-flex}
+.vs-reason textarea{min-height:92px}
+
 /* ---- Experiment Compare ------------------------------------------------ */
 .cmp-sum tbody tr{background:none}
 .cmp-sum td,.cmp-sum th{border-bottom:1px solid var(--line)}
@@ -1947,6 +1980,24 @@ const TwinXData = (() => {
     e.markets = a.id === b2.id ? [a.id] : [a.id, b2.id];
   });
 
+  /* A pending volume conflict, as the Workflow tracker hands one to Modify
+     Promotion. Ids and figures are the client's own from the reference
+     screenshot; the endpoint will key this by promotion. */
+  const volumeConflict = {
+    familyId: 'FAM-002',
+    window: { start: '2026-10-30', end: '2026-11-07' },
+    available: 150,
+    requested: 200,
+    otherPromotions: 1,
+    otherRequested: 100,
+    rows: [
+      { articleId: 'A10234', name: 'Brake Pad Set', requestor: 'Sophie', role: 'Pilot Manager',
+        market: 'FR', promoId: 'C4', requestedQty: 180, allocation: 90 },
+      { articleId: 'A10567', name: 'Clutch Disc', requestor: 'Marc', role: 'Pilot Manager',
+        market: 'FR', promoId: 'C7', requestedQty: 100, allocation: 60 }
+    ]
+  };
+
   const notifications = [
     { id: 'n1', status: 'submitted_logistics_review', text: '<b>February Promotion</b> (2701) was submitted for logistics review.', when: '12 min ago' },
     { id: 'n2', status: 'analysis_completed',         text: 'Analysis completed for <b>Demo-shipmentOpt</b> (2699).',              when: '1 hr ago' },
@@ -1955,7 +2006,7 @@ const TwinXData = (() => {
     { id: 'n5', status: 'draft',                      text: '<b>Thanks-giving Promotion</b> (2724) draft created in Nov 2025_Promo.', when: 'Yesterday' }
   ];
 
-  return { session, navigation, scopes, statuses, statusOrder, simulationTypes, promotionTypes, markets, brands, promoApplicability, families, projects, experiments, notifications, REGION, FAMILY_SIZES };
+  return { session, navigation, scopes, statuses, statusOrder, simulationTypes, promotionTypes, markets, brands, promoApplicability, families, projects, experiments, notifications, volumeConflict, REGION, FAMILY_SIZES };
 })();
 
 
@@ -2145,6 +2196,15 @@ const TwinXService = (() => {
         top: scored.slice(0, 3),
         low: scored.slice(-3)
       };
+    },
+
+    /* ---- Volume conflict ------------------------------------------------
+       The split the Workflow tracker asks for when a family is oversubscribed.
+       A copy, so the dialog's edits never touch the seed. */
+    volumeConflict(promoId) {
+      const c = TwinXData.volumeConflict;
+      return { ...c, promoId: promoId || null, window: { ...c.window },
+               rows: c.rows.map(r => ({ ...r })) };
     },
 
     /* ---- Experiment compare -------------------------------------------
@@ -2600,6 +2660,7 @@ const TwinXService = (() => {
     getPeriods:        ()  => settle(transport.periods()),
     simulate:          (p) => settle(transport.simulate(p)),
     compare:           (p) => settle(transport.compare(p)),
+    getVolumeConflict: (i) => settle(transport.volumeConflict(i)),
     volumeSplit:       (p) => settle(transport.volumeSplit(p)),
     reportHub:         (p) => settle(transport.reportHub(p)),
     elasticity:        (p) => settle(transport.elasticity(p)),
@@ -3461,6 +3522,144 @@ async function openExperiment(id) {
 }
 function continueExperiment(x) {
   toast(`Opening <b>${esc(x.name)}</b> · <span class="mono">${x.id}</span> at iteration ${x.iteration}. Configuration is the next workflow.`, 'info');
+}
+
+/* --- Volume Split Needed ------------------------------------------------
+   Modify Promotion opens this when a family is oversubscribed: the requested
+   quantities exceed what the execution window can supply, so the pilot decides
+   how the available volume is shared before anything else moves. */
+async function openVolumeSplit(promoId) {
+  const c = await TwinXService.getVolumeConflict(promoId);
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  const cols = ['Article ID', 'Article Name', 'Requestor', 'Role', 'Market', 'Promo ID'];
+
+  const dlg = openDialog(`
+    <div class="dlg-head">
+      <span class="t">
+        <h2>Volume Split Needed</h2>
+        <span class="s">Family ID: <b class="mono">${esc(c.familyId)}</b> &middot;
+          Execution Window: <span class="mono">${esc(c.window.start)} → ${esc(c.window.end)}</span>
+          (${esc(durationLabel(c.window.start, c.window.end))})</span>
+      </span>
+      <button class="dlg-x" data-close aria-label="Close">${icon('x', 16)}</button>
+    </div>
+    <div class="dlg-body">
+      <p class="vs-callout"><span class="i">${icon('warnTri', 15)}</span>
+        <span><b class="mono">${nf(c.available)}</b> available, you requested
+        <b class="mono">${nf(c.requested)}</b>; ${nf(c.otherPromotions)} other
+        promotion${c.otherPromotions === 1 ? '' : 's'} requested
+        <b class="mono">${nf(c.otherRequested)}</b>.</span></p>
+
+      <div class="fam-scroll">
+        <table class="fam-table vs-table">
+          <thead><tr>
+            ${cols.map(h => `<th>${esc(h)}</th>`).join('')}
+            <th class="c-num">Requested Qty</th><th class="c-num">Final Allocation</th>
+          </tr></thead>
+          <tbody>
+            ${c.rows.map(r => `<tr>
+              <td class="mono">${esc(r.articleId)}</td>
+              <td class="nm">${esc(r.name)}</td>
+              <td>${esc(r.requestor)}</td>
+              <td>${esc(r.role)}</td>
+              <td>${esc(r.market)}</td>
+              <td class="mono">${esc(r.promoId)}</td>
+              <td class="c-num mono">${nf(r.requestedQty)}</td>
+              <td class="c-num">
+                <span class="stepper">
+                  <input type="number" class="cell-in mono" data-vs-alloc="${esc(r.articleId)}"
+                         value="${r.allocation}" min="0" max="${r.requestedQty}" step="1"
+                         aria-label="Final allocation for ${esc(r.name)}">
+                  <span class="st-btns">
+                    <button class="st up" data-vs-step="${esc(r.articleId)}:1"
+                            aria-label="Increase the allocation for ${esc(r.name)}"><span class="ic">${icon('chevDown', 12)}</span></button>
+                    <button class="st" data-vs-step="${esc(r.articleId)}:-1"
+                            aria-label="Decrease the allocation for ${esc(r.name)}">${icon('chevDown', 12)}</button>
+                  </span>
+                </span>
+              </td>
+            </tr>`).join('')}
+            <tr class="tot">
+              <td>Total</td>
+              ${cols.slice(1).map(() => '<td class="dash">-</td>').join('')}
+              <td class="c-num mono">${nf(c.rows.reduce((n, r) => n + r.requestedQty, 0))}</td>
+              <td class="c-num"><span class="vs-tot mono" id="vsTotal"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="field vs-reason">
+        <label class="ulabel" for="vsReason">Reason for split (required)</label>
+        <textarea id="vsReason" placeholder="Enter reason for the volume split…"
+                  aria-describedby="vsReasonErr"></textarea>
+        <span class="err" id="vsReasonErr">A reason is required before the split can be confirmed.</span>
+        <span class="hint" id="vsHint"></span>
+      </div>
+    </div>
+    <div class="dlg-foot"><span class="right">
+      <button class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" id="vsConfirm" disabled>Confirm Split</button>
+    </span></div>`, { label: 'Volume split needed', wide: true });
+
+  const rowOf = id => c.rows.find(r => r.articleId === id);
+  const reasonEl = dlg.querySelector('#vsReason');
+
+  /* Confirm stays out of reach until the allocation lands exactly on what is
+     available and the reason is filled in. */
+  const paint = () => {
+    const total = c.rows.reduce((n, r) => n + r.allocation, 0);
+    const tone = total === c.available ? 'ok' : total > c.available ? 'bad' : 'warn';
+    const tot = dlg.querySelector('#vsTotal');
+    tot.className = `vs-tot mono t-${tone}`;
+    tot.innerHTML = `${nf(total)} / ${nf(c.available)}`;
+    const reason = reasonEl.value.trim();
+    reasonEl.setAttribute('aria-invalid', reason ? 'false' : 'true');
+    dlg.querySelector('#vsReasonErr').hidden = !!reason;
+    const gap = Math.abs(total - c.available);
+    const units = `${nf(gap)} unit${gap === 1 ? '' : 's'}`;
+    dlg.querySelector('#vsHint').textContent = total === c.available ? ''
+      : total > c.available
+        ? `${units} over what is available.`
+        : `${units} still to allocate.`;
+    dlg.querySelector('#vsConfirm').disabled = !(reason && total === c.available);
+  };
+  paint();
+  setTimeout(() => reasonEl.focus({ preventScroll: true }), 40);
+
+  dlg.addEventListener('click', e => {
+    if (e.target.closest('[data-close]')) return closeTopDialog();
+    const st = e.target.closest('[data-vs-step]');
+    if (st) {
+      const [id, delta] = st.dataset.vsStep.split(':');
+      const row = rowOf(id);
+      row.allocation = clamp(row.allocation + Number(delta), 0, row.requestedQty);
+      dlg.querySelector(`[data-vs-alloc="${id}"]`).value = row.allocation;
+      paint(); return;
+    }
+    if (e.target.closest('#vsConfirm')) {
+      const split = c.rows.map(r => `<span class="mono">${esc(r.promoId)}</span> ${nf(r.allocation)}`).join(' · ');
+      closeTopDialog();
+      toast(`Volume split confirmed for <b>${esc(c.familyId)}</b> — ${split}.`);
+    }
+  });
+
+  dlg.addEventListener('input', e => {
+    if (e.target.matches('[data-vs-alloc]')) {
+      const row = rowOf(e.target.dataset.vsAlloc);
+      const v = Math.round(Number(e.target.value));
+      row.allocation = e.target.value === '' || isNaN(v) ? 0 : clamp(v, 0, row.requestedQty);
+      paint(); return;
+    }
+    if (e.target === reasonEl) paint();
+  });
+
+  /* Tidy the field once the user leaves it, rather than fighting them mid-type. */
+  dlg.addEventListener('change', e => {
+    if (!e.target.matches('[data-vs-alloc]')) return;
+    e.target.value = rowOf(e.target.dataset.vsAlloc).allocation;
+    paint();
+  });
 }
 
 function openAddProject() {
@@ -6204,6 +6403,7 @@ function openUser(anchor) {
 function openRowMenu(anchor, id) {
   const n = openPop(anchor, `<div class="pop-list">
       <button class="opt" data-row-act="view"><span class="l">View experiment</span></button>
+      <button class="opt" data-row-act="modify"><span class="l">Modify Promotion</span></button>
       <button class="opt" data-row-act="copy"><span class="l">Copy experiment ID</span></button>
     </div>
     <p class="hint" style="padding:4px 10px 6px;margin:0">Further actions unlock once the experiment is configured.</p>`,
@@ -6212,6 +6412,7 @@ function openRowMenu(anchor, id) {
     const b = e.target.closest('[data-row-act]'); if (!b) return;
     closePop();
     if (b.dataset.rowAct === 'view') return openExperiment(id);
+    if (b.dataset.rowAct === 'modify') return openVolumeSplit(id);
     try { await navigator.clipboard.writeText(String(id)); toast(`Experiment ID <span class="mono">${id}</span> copied.`); }
     catch (err) { toast(`Experiment ID <span class="mono">${id}</span>`, 'info'); }
   });
