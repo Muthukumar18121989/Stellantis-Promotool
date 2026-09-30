@@ -44,11 +44,23 @@ Nothing is hardcoded in markup: every screen renders from structured data.
 
 ## Visual system
 
-A CSS custom-property token layer, with `data-theme` (`dark` | `light`) and
-`data-accent` (`mono` | `ice` | `amber` | `lime` | `violet`) on `<html>`. The
-palette is monochrome by design; hue is reserved for meaning — `--ok`, `--bad`,
-`--warn`, `--promo`, and `--twinx` for machine-generated figures. The chart ramp
-`--c1`…`--c9` inverts between themes. State is carried by form, not colour.
+A CSS custom-property token layer, with `data-theme` (`dark` | `light` |
+`umber`) and `data-accent` (`mono` | `ice` | `amber` | `lime` | `violet`) on
+`<html>`. Dark and light are monochrome by design; hue is reserved for meaning —
+`--ok`, `--bad`, `--warn`, `--promo`, and `--twinx` for machine-generated
+figures. The chart ramp `--c1`…`--c9` inverts between themes. State is carried
+by form, not colour.
+
+**Umber** is a warm brand theme: deep brown navigation against warm paper, with
+a gold accent. It ships its own accent and semantic hues, so the accent swatches
+stand down while it is on. Adding a theme is two things: an entry in the
+`THEMES` array and a `:root[data-theme="…"]` block in the token layer. The
+choice is picked from the theme control in the top bar and remembered in
+`localStorage` under `pt.theme`.
+
+The navigation panel floats — inset from the window on every side, rounded, with
+its own surface tokens (`--rail-bg`, `--rail-active`, `--rail-fg`, …) so a theme
+can invert it without touching anything else.
 
 ## Running it
 

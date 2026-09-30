@@ -6,11 +6,15 @@
 <title>Promotool — Promotion Optimization</title>
 </head>
 <body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap">
 <script>
 /* Pre-paint: stamp the theme before the stylesheet so the first paint is correct. */
 (function () {
   var r = document.documentElement, t = null, a = null;
   try { t = localStorage.getItem('pt.theme'); a = localStorage.getItem('pt.accent'); } catch (e) {}
+  if (['dark', 'light', 'umber'].indexOf(t) === -1) { t = null; }
   if (!t) { t = r.getAttribute('data-theme'); }
   if (!t) { t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
   r.setAttribute('data-theme', t);
@@ -26,8 +30,8 @@
 
 /* 1. :root — scale, fonts, easing (plus the dark palette as the unstamped default) */
 :root{
-  --r-sm:4px; --r-md:6px; --r-lg:8px;
-  --rail:56px; --rail-open:216px; --topbar:56px;
+  --r-sm:4px; --r-md:6px; --r-lg:8px; --r-xl:16px;
+  --rail:56px; --rail-open:216px; --topbar:56px; --rail-inset:10px;
   --gut:clamp(16px, 2vw, 24px);
   --gap:20px;
   --cell-x:12px;
@@ -84,6 +88,24 @@
   --l1:13%; --l2:62%; --l3:30%; --l4:74%; --l5:42%; --l6:84%; --l7:22%; --l8:52%; --l9:66%;
 }
 
+/* Umber — the client's own palette, mapped onto the same token names, so the
+   whole application themes from one block. Every value here is his. */
+:root[data-theme="umber"]{
+  --sans:"Inter Variable","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --display:"Cormorant Garamond","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --bg:#FBF6EF; --surface:#FFFFFF; --surface-2:#F5EEE3; --surface-3:#EDE4D5;
+  --line:#E8DECE; --line-2:#D5C4AE;
+  --fg:#1A0E08; --fg-2:#3E2A1C; --fg-3:#7A6858;
+  --grid:rgba(53,28,21,.035);
+  --shadow:0 1px 2px rgba(53,28,21,.05), 0 18px 40px -26px rgba(53,28,21,.45);
+  --scrim:rgba(26,14,8,.44);
+  --l1:13%; --l2:62%; --l3:30%; --l4:74%; --l5:42%; --l6:84%; --l7:22%; --l8:52%; --l9:66%;
+  /* the navigation panel inverts: deep brown against warm paper */
+  --rail-bg:#351C15; --rail-bg-2:#4A2E1C; --rail-active:#4A2E1C;
+  --rail-fg:#A89880; --rail-fg-hi:#FBF6EF; --rail-line:rgba(251,246,239,.10);
+}
+
 /* 3. accent — hue, saturation, lightness, acc-fg, chart saturation */
 :root[data-accent="mono"]  { --acc-h:0;   --acc-s:0%;  --acc-l:100%; --acc-fg:#08090A; --chart-s:0%;  --chart-h:0; }
 :root[data-theme="light"][data-accent="mono"]{ --acc-l:10%; --acc-fg:#FFFFFF; }
@@ -115,6 +137,19 @@
 /* Validation outcome is the one place hue carries meaning regardless of accent. */
 :root{ --ok:hsl(151 58% 48%); --bad:hsl(3 74% 62%); --twinx:hsl(304 66% 68%); --promo:hsl(28 88% 60%); --warn:hsl(40 92% 58%); }
 :root[data-theme="light"]{ --ok:hsl(151 62% 28%); --bad:hsl(3 68% 44%); --twinx:hsl(304 62% 42%); --promo:hsl(26 84% 42%); --warn:hsl(36 86% 38%); }
+/* Umber ships its own accent (gold) and its own semantic hues, so the accent
+   swatches do not apply while it is on. */
+:root[data-theme="umber"]{ --acc-h:43; --acc-s:100%; --acc-l:50%; --acc-l-ink:34%; --acc-fg:#351C15; --chart-s:38%; --chart-h:32; }
+:root[data-theme="umber"]{ --ok:#2D6B4A; --bad:#A83A2E; --twinx:#644117; --promo:#CC9100; --warn:#D4920A; }
+
+/* 6. the navigation panel reads its own surface, so a theme can invert it
+   without touching anything else. */
+:root{
+  --display:var(--sans);
+  --rail-bg:var(--surface); --rail-bg-2:var(--surface-2); --rail-active:var(--surface-3);
+  --rail-fg:var(--fg-3); --rail-fg-hi:var(--fg); --rail-line:var(--line);
+}
+:root[data-theme="umber"] .pagehead h1{font-family:var(--display);letter-spacing:-.005em}
 
 /* ==========================================================================
    Base
@@ -157,43 +192,58 @@ h1,h2,h3{margin:0}
 .app{position:relative;z-index:1;min-height:100%}
 
 /* --- rail --- */
+/* A floating panel: inset from the window on every side, with its own
+   surface so a theme can invert it. */
 .rail{
-  position:fixed;left:0;top:0;bottom:0;z-index:60;
+  position:fixed;left:var(--rail-inset);top:var(--rail-inset);bottom:var(--rail-inset);z-index:60;
   width:var(--rail);padding:10px;padding-top:calc(10px + env(safe-area-inset-top, 0px));
-  background:var(--surface);border-right:1px solid var(--line);
+  background:var(--rail-bg);border:1px solid var(--rail-line);border-radius:var(--r-xl);
+  box-shadow:var(--shadow);
   display:flex;flex-direction:column;gap:2px;overflow:hidden;
   transition:width 420ms var(--ease);
 }
 .rail:hover,.rail:focus-within,.rail.is-pinned{width:var(--rail-open)}
-.rail-sep{height:1px;background:var(--line);margin:8px 2px}
+.rail-sep{height:1px;background:var(--rail-line);margin:8px 2px}
 .rail-spacer{flex:1;min-height:8px}
+/* Group headings only earn their room once the panel is open. */
+.rail-group{
+  display:block;height:10px;padding:0 8px;margin-top:6px;overflow:hidden;
+  font-size:9.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;line-height:26px;
+  color:var(--rail-fg);white-space:nowrap;opacity:0;
+  transition:height 300ms var(--ease),opacity 240ms var(--ease);
+}
+.rail-group:first-of-type{margin-top:2px}
+.rail:hover .rail-group,.rail:focus-within .rail-group,.rail.is-pinned .rail-group{height:26px;opacity:.7}
 .rail-item{
   position:relative;display:flex;align-items:center;gap:12px;
   height:36px;padding:0 8px;border-radius:var(--r-md);
-  color:var(--fg-3);width:100%;text-align:left;white-space:nowrap;
+  color:var(--rail-fg);width:100%;text-align:left;white-space:nowrap;
   transition:background 160ms var(--ease),color 160ms var(--ease);
 }
-.rail-item:hover{color:var(--fg);background:var(--surface-2)}
+.rail-item:hover{color:var(--rail-fg-hi);background:var(--rail-bg-2)}
 .rail-item .ico{flex:0 0 20px;display:grid;place-items:center}
 .rail-item .lbl{
   font-size:13px;opacity:0;transform:translateX(-6px);
   transition:opacity 260ms var(--ease),transform 260ms var(--ease);
 }
 .rail:hover .rail-item .lbl,.rail:focus-within .rail-item .lbl,.rail.is-pinned .rail-item .lbl{opacity:1;transform:none}
-.rail-item[aria-current="page"]{background:var(--surface-2);color:var(--fg)}
-.rail-item[aria-current="page"]::before{
-  content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:2px;background:var(--acc-ink);
+.rail-item[aria-current="page"]{background:var(--rail-active);color:var(--rail-fg-hi);font-weight:500}
+.rail-item[aria-current="page"] .ico{color:var(--accent)}
+.rail-item .dot{
+  margin-left:auto;flex:0 0 7px;width:7px;height:7px;border-radius:999px;background:var(--accent);
+  opacity:0;transition:opacity 260ms var(--ease);
 }
+.rail:hover .dot,.rail:focus-within .dot,.rail.is-pinned .dot{opacity:1}
 .rail-item .soon{
   margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--fg-3);border:1px solid var(--line-2);border-radius:3px;padding:0 4px;height:16px;
+  color:var(--rail-fg);border:1px solid var(--rail-line);border-radius:3px;padding:0 4px;height:16px;
   display:grid;place-items:center;opacity:0;transition:opacity 260ms var(--ease);
 }
 .rail:hover .soon,.rail:focus-within .soon,.rail.is-pinned .soon{opacity:1}
 .rail-scrim{display:none}
 
 /* --- main --- */
-.main{min-width:0;margin-left:var(--rail);display:flex;flex-direction:column;transition:margin-left 420ms var(--ease)}
+.main{min-width:0;margin-left:calc(var(--rail) + var(--rail-inset) * 2);display:flex;flex-direction:column;transition:margin-left 420ms var(--ease)}
 
 /* --- top bar --- */
 .topbar{
@@ -612,6 +662,12 @@ table.data-table{width:100%;border-collapse:separate;border-spacing:0}
 .pop-foot{display:flex;gap:6px;padding:6px;border-top:1px solid var(--line);margin-top:6px}
 .pop-foot .btn{flex:1;height:32px;padding:0 10px}
 .pop-sep{height:1px;background:var(--line);margin:6px 0}
+.opt .sw3{display:inline-flex;flex:0 0 auto;border-radius:3px;overflow:hidden;border:1px solid var(--line-2)}
+.opt .sw3 i{width:9px;height:16px;display:block}
+.opt .tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.opt .tx b{font-size:12.5px;font-weight:600;color:var(--fg)}
+.opt .tx span{font-size:11px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opt[aria-checked="true"] .mk{margin-left:auto;color:var(--acc-ink);display:inline-flex}
 .pop-who{padding:8px 10px;display:flex;flex-direction:column;gap:1px}
 .pop-who b{font-size:13px;font-weight:600;color:var(--fg)}
 .pop-who span{font-size:11.5px;color:var(--fg-3)}
@@ -805,11 +861,12 @@ tr[data-row].shown{opacity:1;transform:none;transition:opacity 460ms var(--ease)
 @media (max-width:768px){
   .main{margin-left:0}
   .rail{
-    transform:translateX(-100%);width:var(--rail-open);
+    transform:translateX(calc(-100% - var(--rail-inset) - 6px));width:var(--rail-open);
     transition:transform 300ms var(--ease);
   }
   .rail.is-open{transform:none}
-  .rail .rail-item .lbl,.rail .soon{opacity:1;transform:none}
+  .rail .rail-item .lbl,.rail .soon,.rail .dot{opacity:1;transform:none}
+  .rail .rail-group{height:26px;opacity:.7}
   .rail-scrim{display:block;position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.5)}
   .topbar .burger{display:grid}
   .who{display:none}
@@ -2784,28 +2841,43 @@ const currentProject = () => state.projects.find(p => p.id === state.projectId) 
 
 /* =========================  COMPONENTS  ================================== */
 
-/* Rail — menu toggle, separator, modules, spacer, Administration */
+/* Rail — a floating panel: menu toggle, grouped modules, Administration last.
+   The filled row is the module on screen, not merely the ones that ship. */
 function Rail() {
-  const groups = state.nav.map(g => g.items);
-  const main = groups.slice(0, 2).flat();
-  const platform = groups[2] || [];
-  const item = it => `
-    <button class="rail-item" data-nav="${it.id}" ${it.active ? 'aria-current="page"' : ''}
+  const here = state.view === 'reports' ? 'reports' : 'experiments';
+  const item = it => {
+    const on = it.id === here;
+    return `
+    <button class="rail-item" data-nav="${it.id}" ${on ? 'aria-current="page"' : ''}
       title="${esc(it.label)}${it.active ? '' : ' — not in this release'}">
       <span class="ico">${icon(it.icon, 20)}</span>
       <span class="lbl">${esc(it.label)}</span>
-      ${it.active ? '' : '<span class="soon">Soon</span>'}
+      ${it.active ? (on ? '<span class="dot"></span>' : '') : '<span class="soon">Soon</span>'}
     </button>`;
+  };
+  const group = g => `<span class="rail-group">${esc(g.group)}</span>${g.items.map(item).join('')}`;
+  const groups = state.nav;
   return `
     <button class="rail-item" id="railToggle" aria-pressed="${state.railPinned}"
       aria-label="${state.railPinned ? 'Collapse navigation' : 'Expand navigation'}">
       <span class="ico">${icon('menu', 20)}</span><span class="lbl">Modules</span>
     </button>
     <div class="rail-sep"></div>
-    ${main.map(item).join('')}
+    ${groups.slice(0, 2).map(group).join('')}
     <div class="rail-spacer"></div>
-    ${platform.map(item).join('')}`;
+    ${groups.slice(2).map(group).join('')}`;
 }
+
+/* The themes on offer. Umber is the client's own palette and carries its own
+   accent, so the accent swatches stand down while it is on. Adding a theme is
+   an entry here plus a :root[data-theme="…"] block in the token layer. */
+const THEMES = [
+  { id: 'dark',  label: 'Dark',  desc: 'Monochrome, dark surfaces',      swatch: ['#08090A', '#F3F4F5', '#FFFFFF'] },
+  { id: 'light', label: 'Light', desc: 'Monochrome, light surfaces',     swatch: ['#F7F7F8', '#FFFFFF', '#0A0B0D'] },
+  { id: 'umber', label: 'Umber', desc: 'Deep brown, amber accent, warm tan',
+    swatch: ['#FBF6EF', '#351C15', '#FFB500'], fixedAccent: true }
+];
+const themeById = id => THEMES.find(t => t.id === id) || THEMES[0];
 
 /* Top bar */
 function TopBar() {
@@ -2814,7 +2886,7 @@ function TopBar() {
     ['mono', 'Mono'], ['ice', 'Ice'], ['amber', 'Amber'], ['lime', 'Lime'], ['violet', 'Violet']
   ];
   const cur = document.documentElement.getAttribute('data-accent') || 'mono';
-  const dark = currentTheme() === 'dark';
+  const theme = themeById(currentTheme());
   return `
     <button class="iconbtn burger" id="burger" aria-label="Open navigation" aria-expanded="false">${icon('menu', 18)}</button>
     <span class="brand">
@@ -2825,11 +2897,12 @@ function TopBar() {
       </span>
     </span>
     <span class="bar-right">
-      <span class="swatches" role="group" aria-label="Accent">
+      ${theme.fixedAccent ? '' : `<span class="swatches" role="group" aria-label="Accent">
         ${accents.map(([id, label]) => `<button class="swatch" data-accent-set="${id}" aria-pressed="${id === cur}"
           aria-label="${label} accent" title="${label}" style="background:${id === 'mono' ? 'var(--fg)' : `hsl(${{ice:206,amber:37,lime:96,violet:264}[id]} ${{ice:'76%',amber:'92%',lime:'52%',violet:'66%'}[id]} ${{ice:'58%',amber:'56%',lime:'54%',violet:'66%'}[id]})`}"></button>`).join('')}
-      </span>
-      <button class="iconbtn" id="btnTheme" aria-label="${dark ? 'Switch to light appearance' : 'Switch to dark appearance'}">${icon(dark ? 'sun' : 'moon', 17)}</button>
+      </span>`}
+      <button class="iconbtn" id="btnTheme" aria-haspopup="menu" aria-expanded="false"
+        title="Theme: ${esc(theme.label)}" aria-label="Theme: ${esc(theme.label)}. Choose a theme">${icon(theme.id === 'dark' ? 'moon' : 'sun', 17)}</button>
       <span class="bar-div"></span>
       <span class="bellwrap">
         <button class="iconbtn" id="btnNotif" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">${icon('bell', 17)}</button>
@@ -5259,6 +5332,7 @@ function showView(name) {
   el('viewReports').hidden = name !== 'reports';
   el('viewCompare').hidden = name !== 'compare';
   renderHead();
+  renderRail();
   if (name === 'configuration') renderConfig();
   if (name === 'validation') renderValidation();
   if (name === 'reports') renderReports();
@@ -6423,13 +6497,36 @@ function currentTheme() { return document.documentElement.getAttribute('data-the
 function setMeta(theme) {
   let m = document.querySelector('meta[name="theme-color"]');
   if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
-  m.setAttribute('content', theme === 'light' ? '#F7F7F8' : '#08090A');
+  m.setAttribute('content', { light: '#F7F7F8', umber: '#FBF6EF' }[theme] || '#08090A');
 }
-function toggleTheme() {
-  const next = currentTheme() === 'dark' ? 'light' : 'dark';   // read the live attribute, never a cache
-  document.documentElement.setAttribute('data-theme', next);
-  try { localStorage.setItem('pt.theme', next); } catch (e) {}
-  setMeta(next); renderTopBar();
+
+/* The choice is remembered in this browser, so it survives a reload and,
+   once there are accounts, a sign out and sign in. */
+function setTheme(id) {
+  const t = themeById(id);
+  document.documentElement.setAttribute('data-theme', t.id);
+  try { localStorage.setItem('pt.theme', t.id); } catch (e) {}
+  setMeta(t.id); renderTopBar(); renderRail();
+}
+
+function openThemePicker(anchor) {
+  const cur = currentTheme();
+  const n = openPop(anchor, `<div class="pop-head"><span class="ulabel">Theme</span></div>
+    <div class="pop-list" role="menu">
+      ${THEMES.map(t => `<button class="opt" role="menuitemradio" data-theme-set="${t.id}"
+        aria-checked="${t.id === cur}">
+        <span class="sw3">${t.swatch.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+        <span class="tx"><b>${esc(t.label)}</b><span>${esc(t.desc)}</span></span>
+        ${t.id === cur ? `<span class="mk">${icon('check', 13)}</span>` : ''}
+      </button>`).join('')}
+    </div>`, { label: 'Choose a theme', align: 'end' });
+  n.addEventListener('click', e => {
+    const b = e.target.closest('[data-theme-set]');
+    if (!b) return;
+    closePop();
+    setTheme(b.dataset.themeSet);
+    toast(`Theme set to <b>${esc(themeById(b.dataset.themeSet).label)}</b>. It is remembered on this browser.`);
+  });
 }
 function setAccent(id) {
   document.documentElement.setAttribute('data-accent', id);
@@ -6466,7 +6563,8 @@ document.addEventListener('click', async e => {
   }
 
   /* theme + accent */
-  if (t.closest('#btnTheme')) return toggleTheme();
+  const tb = t.closest('#btnTheme');
+  if (tb) return openThemePicker(tb);
   const sw = t.closest('[data-accent-set]');
   if (sw) return setAccent(sw.dataset.accentSet);
 
